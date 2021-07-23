@@ -9,7 +9,7 @@ function log(...message) {
 }
 
 function getBrowser() {
-    // return puppeteer.launch({ headless: false , devtools: true});
+    // return puppeteer.launch({ headless: false , devtools: true, slowMo: 100, defaultViewport: null});
     return puppeteer.launch();
 }
 
@@ -69,7 +69,7 @@ async function getCamsData(retryCount, page) {
     });
     if(!camsData){
         log("camsData is null..")
-        await page.screenshot()
+        await page.screenshot({path: "maycams_error.png"})
     }
 
     return camsData;
