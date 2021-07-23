@@ -1,11 +1,14 @@
-require('dotenv').config();
-const http = require('https');
-const fs = require('fs');
-const homedir = require('os').homedir();
-const puppeteer = require('puppeteer');
+import dotenv from 'dotenv'
+dotenv.config()
 
-function log(...message) {
-    console.log(new Date(), " => ", ...message)
+import fs from 'fs'
+import os from 'os';
+import puppeteer from 'puppeteer';
+import { sendToTelegram } from './notification.js'
+import {log} from './util.js'
+
+function takeScreenShot(page, name) {
+    return page.screenshot({path: `screenshot-${name}-${new Date()}.png`})
 }
 
 function getBrowser() {
@@ -29,7 +32,7 @@ async function getCamsData(retryCount, page) {
 
     let camsData = null;
     if(retryCount >= 5) {
-        log("retried " + retryCount + "times stopping now..")
+        log(`retried ${retryCount} times stopping now..`)
         return;
     }
 
@@ -61,6 +64,7 @@ async function getCamsData(retryCount, page) {
         await (await page.$("div[ng-click='btnTwoQues();']")).evaluate(b => b.click());
         log("final login click done");
         await page.waitForNavigation({waitUntil: "networkidle0"})
+        await page.waitForSelector('#MutualFundDetails .row.mr-30')
         camsData = await (await page.$('#MutualFundDetails .row.mr-30')).evaluate(div => div.innerText.split("\n"));
 
         // logout
@@ -68,54 +72,32 @@ async function getCamsData(retryCount, page) {
         log("logged out and done..")
     });
     if(!camsData){
-        log("camsData is null..")
-        await page.screenshot({path: "maycams_error.png"})
+        log("camsData is null..");
+        await takeScreenShot(page, "mycams-error-camsdata-null");
     }
 
     return camsData;
 }
 
-// https://xabaras.medium.com/sending-a-message-to-a-telegram-channel-the-easy-way-eb0a0b32968
-function sendToTelegram(datetime, numbers) {
-    let message = new Date(datetime).toLocaleString();
-    // Numbers:  ₹12,73,808.88, Total Cost Value, ₹17,29,473.61, Total Market Value, ₹4,55,664.73, Appreciation, 666, Wtd. Avg Age days, 19.89%, Wtd.Avg Annualized return*
-
-    for(let i=0; i<numbers.length; i+=2){
-        message += "\n" + numbers[i+1] + " => <b>" + numbers[i] + "</b>"
-    }
-
-    let path = `/bot${process.env.TELEGRAM_BOT_API_KEY}/sendMessage`
-
-    // path = encodeURI(path)
-    let params = new URLSearchParams({
-        chat_id: process.env.TELEGRAM_CHAT_ID,  //https://stackoverflow.com/questions/33858927/how-to-obtain-the-chat-id-of-a-private-telegram-channel
-        parse_mode: "html",
-        text: message
-    })
-    path = path + "?" + params.toString()
-    log("TelegramPath: ", path)
-    return http.request({host: 'api.telegram.org', path: path}, function (res){
-        log('statusCode:', res.statusCode);
-        log('headers:', res.headers);
-
-        res.on('data', (d) => {
-            process.stdout.write(d);
-        });
-    }).end();
-}
-
 function appendToFile(datetime, numbers) {
     let numbersString = numbers.join(", ") + "\n";
-    fs.appendFileSync(homedir + '/camsdata.txt',  datetime/1000 + ", " + numbersString);
+    fs.appendFileSync(os.homedir() + '/camsdata.txt',  datetime/1000 + ", " + numbersString);
 }
 
 (async function doStuff() {
     let browser = await getBrowser();
-    const numbers = await getCamsData(1, await browser.newPage());
-    await browser.close();
+    let page = await browser.newPage();
+    try {
+        const numbers = await getCamsData(1, page);
+        let datetime = Date.now();
+        log("Numbers: ", numbers);
+        appendToFile(datetime, numbers)
+        await sendToTelegram(datetime, numbers)
+    } catch (e) {
+        log(e);
+        await takeScreenShot(page, `mycams-error-${e.message}`);
+    } finally {
+        await browser.close();
+    }
 
-    let datetime = Date.now();
-    log("Numbers: ", numbers);
-    appendToFile(datetime, numbers)
-    await sendToTelegram(datetime, numbers)
 })();
