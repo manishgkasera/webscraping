@@ -1,9 +1,8 @@
-// const http = require('https');
-import * as https from "https";
-import {log} from './util.js'
+const https = require('https');
+const log = require('./util.js').log;
 
 // https://xabaras.medium.com/sending-a-message-to-a-telegram-channel-the-easy-way-eb0a0b32968
-export function sendToTelegram(datetime, numbers) {
+function sendToTelegram(datetime, numbers) {
     let message = new Date(datetime).toLocaleString();
     // Numbers:  ₹12,73,808.88, Total Cost Value, ₹17,29,473.61, Total Market Value, ₹4,55,664.73, Appreciation, 666, Wtd. Avg Age days, 19.89%, Wtd.Avg Annualized return*
 
@@ -29,4 +28,8 @@ export function sendToTelegram(datetime, numbers) {
             process.stdout.write(d);
         });
     }).end();
+}
+
+module.exports = {
+    sendToTelegram: sendToTelegram
 }

@@ -1,11 +1,12 @@
-import dotenv from 'dotenv'
-dotenv.config()
+const dotenv = require('dotenv')
+const fs = require('fs')
+const os = require('os')
+const puppeteer = require('puppeteer')
+const  sendToTelegram = require('./notification.js').sendToTelegram
+const log = require('./util.js').log
+const addToGoogleSheet = require('./google-sheets.js').addToGoogleSheet
 
-import fs from 'fs'
-import os from 'os';
-import puppeteer from 'puppeteer';
-import { sendToTelegram } from './notification.js'
-import {log} from './util.js'
+dotenv.config()
 
 function takeScreenShot(page, name) {
     return page.screenshot({path: `screenshot-${name}-${new Date()}.png`})
@@ -93,6 +94,7 @@ function appendToFile(datetime, numbers) {
         log("Numbers: ", numbers);
         appendToFile(datetime, numbers)
         await sendToTelegram(datetime, numbers)
+        await addToGoogleSheet(new Date(datetime), numbers)
     } catch (e) {
         log(e);
         await takeScreenShot(page, `mycams-error-${e.message}`);
