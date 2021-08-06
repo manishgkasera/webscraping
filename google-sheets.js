@@ -25,7 +25,8 @@ async function addToGoogleSheet(datetime, numbers){
 
     let data = arrayToMap(numbers);
     data = dataCurrencyToNumber(data);
-    data.set(HEADERS[0], datetime.toLocaleDateString());
+    // TODO: take en-IN from a env variable
+    data.set(HEADERS[0], datetime.toLocaleDateString('en-IN'));
 
     await doc.useServiceAccountAuth({
         client_email: process.env.GOOGLE_SHEET_CLIENT_EMAIL,
