@@ -2,9 +2,9 @@ const dotenv = require('dotenv')
 const fs = require('fs')
 const os = require('os')
 const puppeteer = require('puppeteer')
+const {addToGoogleSheet} = require("./google_sheet/google_sheets");
 const  sendToTelegram = require('./notification.js').sendToTelegram
 const log = require('./util.js').log
-const addToGoogleSheet = require('./google-sheets.js').addToGoogleSheet
 
 dotenv.config()
 
