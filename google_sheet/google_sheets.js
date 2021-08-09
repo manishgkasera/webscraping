@@ -3,6 +3,7 @@ dotenv.config()
 const {arrayToMap, log} = require("../util");
 const {HEADERS, dataCurrencyToNumber, numberToA1Index, getSheetsService} = require("./sheet_util");
 
+let firstDataRowIndex = 3; // added spark lines awesomeness in second row, so data starts from 3rd now
 let spreadsheetId = process.env.GOOGLE_SPREADSHEET_ID;
 let spreadSheetInfo;
 let sheetInfo;
@@ -18,8 +19,8 @@ async function readRange(range) {
     return response.data.values;
 }
 
-async function getLastUpdatedDate() {
-    let rangeValues = await readRange('A2:A2');
+async function getLastUpdatedDate(firstDataRowIndex) {
+    let rangeValues = await readRange(`A${firstDataRowIndex}:A${firstDataRowIndex}`);
     let lastUpdatedDate = rangeValues && rangeValues[0][0];
     log("Sheets: last updated on => ", lastUpdatedDate)
     return lastUpdatedDate;
@@ -32,7 +33,7 @@ async function getHeadersFromSheet() {
 async function updateRow(index, data) {
     return await sheetsService.spreadsheets.values.update({
         spreadsheetId: spreadsheetId,
-        range: `${sheetInfo.title}!A${index+1}:${numberToA1Index(data.length)}${index+1}`,
+        range: `${sheetInfo.title}!A${index}:${numberToA1Index(data.length)}${index}`,
         valueInputOption: "USER_ENTERED",
         resource: {values: [data]}
     })
@@ -47,36 +48,35 @@ async function insertRow(index, data) {
                     range: {
                         sheetId: sheetInfo.sheetId,
                         dimension: "ROWS",
-                        startIndex: index,
-                        endIndex: index + 1
+                        startIndex: index - 1, //internal index starts with zero
+                        endIndex: index
                     },
                     inheritFromBefore: inheritFromBefore
                 }
             }]
         }
     });
-    if(data.length === 0) {
-        return;
+    if(data.length > 0) {
+        await updateRow(index, data);
     }
-    await updateRow(index, data);
 }
 
 async function addHeaders() {
     let headers = await getHeadersFromSheet();
     if(!headers) {
         log("Sheets: Adding headers..")
-        await insertRow(0, HEADERS);
+        await insertRow(1, HEADERS);
     }
 }
 
 async function addData(data) {
-    let lastUpdatedDate = await getLastUpdatedDate();
+    let lastUpdatedDate = await getLastUpdatedDate(firstDataRowIndex);
     if(lastUpdatedDate && lastUpdatedDate === data[0]) {
         log("in update block...");
-        await updateRow(1, data);
+        await updateRow(firstDataRowIndex, data);
     } else {
         log("in insert block...")
-        await insertRow(1, data);
+        await insertRow(firstDataRowIndex, data);
     }
 }
 
@@ -85,8 +85,8 @@ function prepareData(datetime, numbers) {
     data = dataCurrencyToNumber(data);
     // TODO: take en-IN from a env variable
     data.set(HEADERS[0], datetime.toLocaleDateString('en-IN'));
-    data.set(HEADERS[6], "=MINUS(B2,B3)"); // add Investment formulae, B should be cost value column
-    data.set(HEADERS[7], "=MINUS(D2,D3)"); // add Day change formulae, D should be appreciation column
+    data.set(HEADERS[6], `=MINUS(B${firstDataRowIndex},B${firstDataRowIndex+1})`); // add Investment formulae, B should be cost value column
+    data.set(HEADERS[7], `=MINUS(D${firstDataRowIndex},D${firstDataRowIndex+1})`); // add Day change formulae, D should be appreciation column
     let orderedDataArray = []
     for(let header of HEADERS) {
         orderedDataArray.push(data.get(header))
