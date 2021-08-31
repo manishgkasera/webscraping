@@ -3,6 +3,7 @@ const fs = require('fs')
 const os = require('os')
 const puppeteer = require('puppeteer')
 const {addToGoogleSheet} = require("./google_sheet/google_sheets");
+const UserAgent = require("user-agents");
 const  sendToTelegram = require('./notification.js').sendToTelegram
 const log = require('./util.js').log
 
@@ -13,21 +14,33 @@ function takeScreenShot(page, name) {
 }
 
 function getBrowser() {
-    // return puppeteer.launch({ headless: false , devtools: true, slowMo: 100, defaultViewport: null});
-    return puppeteer.launch();
+    let userAgent = new UserAgent({deviceCategory: 'desktop'}).toString();
+    let slowMo = Math.floor(Math.random()*100) + 100;
+    const args = [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-infobars',
+        '--window-position=0,0',
+        '--ignore-certifcate-errors',
+        '--ignore-certifcate-errors-spki-list',
+        '--user-agent="' + userAgent + '"'
+    ];
+
+    // return puppeteer.launch({args: args, slowMo: slowMo, headless: false , devtools: true, defaultViewport: null});
+    return puppeteer.launch({args: args, slowMo: slowMo});
 }
 
 async function getCamsData(retryCount, page) {
     // return  [
-    //     '₹12,73,808.88',
+    //     '₹12,83,808.88',
     //     'Total Cost Value',
     //     '₹17,29,473.61',
     //     'Total Market Value',
-    //     '₹4,55,664.73',
+    //     '₹6,54,664.73',
     //     'Appreciation',
     //     '667',
     //     'Wtd. Avg Age days',
-    //     '19.65%',
+    //     '9.65%',
     //     'Wtd.Avg Annualized return*'
     // ];
 
