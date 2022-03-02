@@ -10,7 +10,7 @@ const log = require('./util.js').log
 dotenv.config()
 
 function takeScreenShot(page, name) {
-    return page.screenshot({path: `screenshot-${name}-${new Date()}.png`})
+    return page.screenshot({path: `screenshot-${Date.now()}-${name}-${new Date()}.png`, fullPage: true})
 }
 
 function getBrowser() {
