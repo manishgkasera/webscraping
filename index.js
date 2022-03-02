@@ -61,6 +61,13 @@ async function getCamsData(retryCount, page) {
         const checkbox = await page.$("input#chkagree");
         await checkbox.evaluate(c => c.click());
         log("agree done")
+
+        // attempting to input password second time
+        // it was not getting populated oin dev dsk but was working fine on mac
+        // I dont know why, need more investigation
+        await page.$eval("#PassWord", (el, pwd) => {el.value = pwd}, process.env.PASSWORD);
+        log("pwd 2 done")
+
         await (await page.$("#btnDIv")).evaluate(b => b.click());
         log("btn done")
         await page.waitForNavigation();
