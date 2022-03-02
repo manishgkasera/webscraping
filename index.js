@@ -54,7 +54,7 @@ async function getCamsData(retryCount, page) {
         waitUntil: "networkidle2"
     });
     await page.$eval("#UserId", (el, username) => {el.value =  username}, process.env.USERNAME)
-    await page.click("#btnNxt a").then(async function (){
+    camsData = await page.click("#btnNxt a").then(async function (){
         log("inside first btn click");
         await page.$eval("#PassWord", (el, pwd) => {el.value = pwd}, process.env.PASSWORD);
         log("pwd done");
@@ -72,6 +72,11 @@ async function getCamsData(retryCount, page) {
         log("btn done")
         await page.waitForNavigation();
 
+        await (await page.$("#Question_0")).evaluate((b, answer) => {b.value = answer}, process.env.SECRETANSWER);
+        await (await page.$("div[ng-click='btnTwoQues();']")).evaluate(b => b.click());
+        log("final login click done");
+        await page.waitForNavigation({waitUntil: "networkidle0"})
+
         // if the session was already active
         const sessionErrorH3 = await page.$("div[ng-model='divsession'] h3");
         const active = sessionErrorH3 && await sessionErrorH3.evaluate(h3 => h3.innerHTML.includes("previous user Id session is still activ"));
@@ -81,16 +86,13 @@ async function getCamsData(retryCount, page) {
             return getCamsData(retryCount+1, page)
         }
 
-        await (await page.$("#Question_0")).evaluate((b, answer) => {b.value = answer}, process.env.SECRETANSWER);
-        await (await page.$("div[ng-click='btnTwoQues();']")).evaluate(b => b.click());
-        log("final login click done");
-        await page.waitForNavigation({waitUntil: "networkidle0"})
-        await page.waitForSelector('#MutualFundDetails .row.mr-30')
-        camsData = await (await page.$('#MutualFundDetails .row.mr-30')).evaluate(div => div.innerText.split("\n"));
+        let div = await page.waitForSelector('#MutualFundDetails .row.mr-30')
+        camsData = await div.evaluate(div => div.innerText.split("\n"));
 
         // logout
         await (await page.$("a[ng-click='LogOutSession()']")).evaluate(b => b.click());
         log("logged out and done..")
+        return camsData;
     });
     if(!camsData){
         log("camsData is null..");
